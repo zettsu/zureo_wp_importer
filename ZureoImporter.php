@@ -5,9 +5,9 @@
  */
 class ZureoImporter {
 
-    protected $service = "http://multijuegos5674.zureodns.com:82/ServicioSincronizacion/ServicioSincronizacion.svc/SincronizarArticulos?token=MULTIJUEGOS&empid=1";
+    const service = "http://multijuegos5674.zureodns.com:82/ServicioSincronizacion/ServicioSincronizacion.svc/SincronizarArticulos?token=MULTIJUEGOS&empid=1";
     private $pieces = 100;
-    private $debug = false;
+    const debug = false;
 
     /**
      * @param string  $from Date from start sync default one is 1900/01/01
@@ -25,11 +25,11 @@ class ZureoImporter {
 
         $end = $qty;
 
-        self::debug("getProducts function - from => {$from}, qty => {$qty}, to => {$to} ");
+        self::debugLog("getProducts function - from => {$from}, qty => {$qty}, to => {$to} ");
 
         do {
             $arr = self::getProducts($from, $start, $end);
-            self::debug("getProducts function start => {$start}, end => {$end} ");
+            self::debugLog("getProducts function start => {$start}, end => {$end} ");
 
             if(empty($arr)) {
                 $records = true;
@@ -53,30 +53,13 @@ class ZureoImporter {
     }
 
     /**
-     * @return string
-     */
-    public function getService()
-    {
-        return $this->service;
-    }
-
-    /**
-     * @param string $service
-     */
-    public function setService($service)
-    {
-        $this->service = $service;
-    }
-
-
-    /**
      * @param $date_from
      * @param int $from
      * @param int $to
      * @param bool $json
-     * @return array
+     * @return mixed
      */
-    public static function getProducts($date_from, $from = 0, $to = 100, $json = false): array
+    public static function getProducts($date_from, $from = 0, $to = 100, $json = false)
     {
         $products_url = self::service;
 
@@ -84,18 +67,20 @@ class ZureoImporter {
         $products_url .= "&desde={$from}";
         $products_url .= "&hasta={$to}";
 
-        self::debug("getProducts function - url {$products_url}");
+        self::debugLog("getProducts function - url {$products_url}");
 
         try{
             $results = wp_remote_retrieve_body( wp_remote_get($products_url) );
 
-            if($json) {
-                $results = json_encode($results, true);
+            if(!empty($results)) {
+                $results = json_decode($results, true);
+            }else{
+                $results = [];
             }
 
             return $results;
         }catch (Exception $exception){
-            self::debug("getProducts function - exception {$exception->getMessage()}");
+            self::debugLog("getProducts function - exception {$exception->getMessage()}");
             return [];
         }
 
@@ -103,20 +88,21 @@ class ZureoImporter {
 
 
     public static function getModifiedPeriod($from, $to, $qty = 100) {
-
-        $begin = new DateTime( $from );
-        $end   = new DateTime( $to );
+        $begin = new DateTime($from);
+        $end= new DateTime($to);
 
         $modified_on_date_range = [];
         $extracted_products = [];
 
         for($i = $begin; $i <= $end; $i->modify('+1 day')) {
             $products = self::getProducts($i->format('Y/m/d'));
-
             foreach ($products as $product) {
-                if(date("d/m/Y", strtotime($product['FechaModificado'])) == $i->format('d/m/Y')) {
+                $fecha_mod = explode(" ",$product['FechaModificado']);
+
+                if($begin->format('Y/m/d') > $fecha_mod[0] && $fecha_mod[0] < $end->format('Y/m/d')) {
                     $extracted_products[] = $product;
                 }
+
             }
 
             $modified_on_date_range = array_merge($modified_on_date_range, $extracted_products);
@@ -127,47 +113,73 @@ class ZureoImporter {
 
     public static function getTodayUpdates() {
         $now = date('Y/m/d');
-        self::debug("getTodayUpdates function, date getted {$now}.");
+        self::debugLog("getTodayUpdates function, date getted {$now}.");
 
         return self::getProducts($now, 0, 10);
     }
 
 
-    public function debug($msg)
+    public function debugLog($msg)
     {
-        if($this->debug) {
+        if(debug) {
             $now = date('Y-m-d H:i:s');
             echo "[{$now}] - {$msg} \n";
         }
     }
 
 
-    public static function getImages($art_id, $name)
+    public static function getImages($art_id, $name, $woo_obj)
     {
-        $name_file = sanitize_title($name)
+        $name_file = sanitize_title($name);
         $post_id = 0;
 
-        $get_tempral_files =
+        $service_images = "http://multijuegos5674.zureodns.com:82/ServicioSincronizacion/ServicioSincronizacion.svc/SincronizarImagenesArticulo?token=MULTIJUEGOS&empid=1&";
+        $service_images .= "artid={$art_id}";
 
 
-        $imageData = base64_decode($imageData);
-        $source = imagecreatefromstring($imageData);
-        $imageSave = imagejpeg(null,$name_file,100);
-        //imagedestroy($source);
+        $results = wp_remote_retrieve_body( wp_remote_get($service_images) );
 
-        $images = array('filename1.png');
+        if(!empty($results)) {
+            $results = json_decode($results, true);
 
-        for($i = 0; $i < 10; $i++) {
-            $attachment = array(
-                'post_mime_type' => 'image/jpeg',
-                'post_title' => $name,
-                'post_content' => 'my description',
-                'post_status' => 'inherit'
-            );
-            $image_id = wp_insert_attachment($attachment, $images[$i], $post_id);
-            $image_data = wp_generate_attachment_metadata($image_id, $images[$i]);
-            wp_update_attachment_metadata($image_id, $image_data);
+            $imageData = base64_decode($results[0]['Thumbnail']);
+            if(!empty($imageData))
+            {
+                self::save_image($imageData,$art_id );
+            }
+
         }
 
     }
+
+    /**
+     * Save the image on the server.
+     */
+    function save_image( $base64_img, $title ) {
+
+	// Upload dir.
+	$upload_dir  = wp_upload_dir();
+	$upload_path = str_replace( '/', DIRECTORY_SEPARATOR, $upload_dir['path'] ) . DIRECTORY_SEPARATOR;
+
+	$img             = str_replace( 'data:image/png;base64,', '', $base64_img );
+	$img             = str_replace( ' ', '+', $img );
+	$decoded         = base64_decode( $img );
+	$filename        = $title . '.jpeg';
+	$file_type       = 'image/jpeg';
+	$hashed_filename = md5( $filename . microtime() ) . '_' . $filename;
+
+	// Save the image in the uploads directory.
+	$upload_file = file_put_contents( $upload_path . $hashed_filename, $decoded );
+
+	$attachment = array(
+		'post_mime_type' => $file_type,
+		'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $hashed_filename ) ),
+		'post_content'   => '',
+		'post_status'    => 'inherit',
+		'guid'           => $upload_dir['url'] . '/' . basename( $hashed_filename )
+	);
+
+	$attach_id = wp_insert_attachment( $attachment, $upload_dir['path'] . '/' . $hashed_filename );
+	return $attach_id;
+}
 }

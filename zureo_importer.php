@@ -14,6 +14,7 @@ require_once 'zureo-ajax.php';
 
 add_action( 'admin_menu', 'zureo_wp_importer');
 
+
 function zureo_wp_importer() {
 
     $page_title = 'Zureo woocomerce importer';
@@ -66,3 +67,11 @@ function jal_install() {
 }
 
 register_activation_hook( __FILE__, 'jal_install' );
+
+function my_enqueue() {
+    wp_enqueue_script('zureo', plugins_url('js/zureo.js', __FILE__), ['jquery'], "1.0", true);
+    wp_localize_script('zureo', 'zureo_ajax', ['ajaxurl' => admin_url('admin-ajax.php')]);
+}
+
+add_action( 'admin_enqueue_scripts', 'my_enqueue' );
+
