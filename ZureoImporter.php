@@ -128,7 +128,7 @@ class ZureoImporter {
     }
 
 
-    public static function getImages($art_id, $name, $woo_obj)
+    public static function getImages($art_id, $name, WC_Product_Simple $woo_obj)
     {
         $name_file = sanitize_title($name);
         $post_id = 0;
@@ -142,10 +142,25 @@ class ZureoImporter {
         if(!empty($results)) {
             $results = json_decode($results, true);
 
-            $imageData = base64_decode($results[0]['Thumbnail']);
-            if(!empty($imageData))
+            $thumbnail = $results[0]['Thumbnail'];
+            //ImagenPrincipal
+            //var_dump($results);
+            if(!empty($thumbnail))
             {
-                self::save_image($imageData,$art_id );
+                $image_id = self::save_image($thumbnail,"{$art_id}_thumbnail" );
+                $woo_obj->set_image_id($image_id);
+                $woo_obj->save();
+            }
+
+            $image = $results[0]['ImagenPrincipal'];
+
+            if(!empty($image))
+            {
+                $image_id = self::save_image($image,"{$art_id}" );
+
+                $woo_obj->set_gallery_image_ids([$image_id]);
+                update_post_meta($post_id,'_product_image_gallery',$list_id);
+                $woo_obj->save();
             }
 
         }
@@ -161,25 +176,25 @@ class ZureoImporter {
 	$upload_dir  = wp_upload_dir();
 	$upload_path = str_replace( '/', DIRECTORY_SEPARATOR, $upload_dir['path'] ) . DIRECTORY_SEPARATOR;
 
-	$img             = str_replace( 'data:image/png;base64,', '', $base64_img );
+	$img             = str_replace( 'data:image/jpeg;base64,', '', $base64_img );
 	$img             = str_replace( ' ', '+', $img );
 	$decoded         = base64_decode( $img );
 	$filename        = $title . '.jpeg';
 	$file_type       = 'image/jpeg';
-	$hashed_filename = md5( $filename . microtime() ) . '_' . $filename;
+	//$hashed_filename = md5( $filename . microtime() ) . '_' . $filename;
 
 	// Save the image in the uploads directory.
-	$upload_file = file_put_contents( $upload_path . $hashed_filename, $decoded );
+	$upload_file = file_put_contents( $upload_path . $filename, $decoded );
 
 	$attachment = array(
 		'post_mime_type' => $file_type,
-		'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $hashed_filename ) ),
+		'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $filename ) ),
 		'post_content'   => '',
 		'post_status'    => 'inherit',
-		'guid'           => $upload_dir['url'] . '/' . basename( $hashed_filename )
+		'guid'           => $upload_dir['url'] . '/' . basename( $filename )
 	);
 
-	$attach_id = wp_insert_attachment( $attachment, $upload_dir['path'] . '/' . $hashed_filename );
+	$attach_id = wp_insert_attachment( $attachment, $upload_dir['path'] . '/' . $filename );
 	return $attach_id;
 }
 }
