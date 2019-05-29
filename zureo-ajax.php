@@ -7,10 +7,9 @@ function get_today_sync()
 {
     $products = ZureoImporter::getTodayUpdates();
     foreach ($products as $j_object) {
-        echo json_encode($j_object);
         $product = new ZureoProduct($j_object);
-        //$images = ZureoImporter::getImages($product->getIdarticulo(), $product->getNombre());
         $product_ob = ZureoProduct::toWooComerceObject($product);
+        ZureoImporter::getImages($product->getIdarticulo(), $product->getNombre(), $product_ob);
     }
 
     die();
@@ -27,17 +26,30 @@ function get_period_sync()
     if(!empty($from) && !empty($to)) {
         $products = ZureoImporter::getModifiedPeriod($from, $to, $qty);
 
+        $zureo_products_images = null;
+
         foreach ($products as $j_object) {
             $product = new ZureoProduct($j_object);
             $product_ob = ZureoProduct::toWooComerceObject($product);
-            ZureoImporter::getImages($product->getIdarticulo(), $product->getNombre(), $product_ob);
+            $zureo_products_images[] = [
+                'idarticulo' => $product->getIdarticulo(),
+                'name' => $product->getNombre(),
+                'woo' => $product_ob
+            ];
         }
+
+        foreach ($zureo_products_images as $pobj)
+        {
+            ZureoImporter::getImages($pobj['idarticulo'], $pobj['name'], $pobj['woo']);
+        }
+
+
     }
 
     die();
 }
 
-function get_last_sync() {
+function get_all_sync() {
     try{
         $products = ZureoImporter::firstRun();
 
@@ -54,6 +66,7 @@ function get_last_sync() {
 
 add_action('wp_ajax_get_today_sync', 'get_today_sync');
 add_action('wp_ajax_get_period_sync', 'get_period_sync');
+add_action('wp_ajax_get_all_sync', 'get_all_sync');
 
 
 

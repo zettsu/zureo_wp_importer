@@ -2,7 +2,7 @@
 
 <div class="wrap">
     <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-
+    <button id="zureo-importer-sync-past" class="button button-primary" type="submit">Sync All (Warning!)</button>
     <form id="zureo-importer-period" method="get" action="">
         <div id="universal-message-container">
             <h2>Sincronizar Periodo</h2>
@@ -16,7 +16,7 @@
                 </p>
             </div>
             <!-- #universal-message-container -->
-            <button id="zureo-importer-sync-period" class="button button-primary" type="submit">Sync</button>
+            <button id="zureo-importer-sync-period" class="button button-primary" type="submit">Sync Period</button>
     </form>
 </div>
 <button id="zureo-importer-sync" class="button button-primary">Sync today</button>

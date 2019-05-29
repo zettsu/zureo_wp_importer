@@ -147,6 +147,12 @@ class ZureoImporter {
             //var_dump($results);
             if(!empty($thumbnail))
             {
+                $featured_image_id = $woo_obj->get_image_id();
+
+                if( !empty( $featured_image_id ) ) {
+                    wp_delete_post( $featured_image_id );
+                }
+
                 $image_id = self::save_image($thumbnail,"{$art_id}_thumbnail" );
                 $woo_obj->set_image_id($image_id);
                 $woo_obj->save();
@@ -156,12 +162,22 @@ class ZureoImporter {
 
             if(!empty($image))
             {
+                $image_galleries_id = $woo_obj->get_gallery_image_ids();
+
+                if( !empty( $image_galleries_id ) ) {
+                    foreach( $image_galleries_id as $single_image_id ) {
+                        wp_delete_post( $single_image_id );
+                    }
+                }
+
                 $image_id = self::save_image($image,"{$art_id}" );
 
                 $woo_obj->set_gallery_image_ids([$image_id]);
-                update_post_meta($post_id,'_product_image_gallery',$list_id);
                 $woo_obj->save();
             }
+
+
+
 
         }
 

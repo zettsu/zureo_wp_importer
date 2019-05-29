@@ -24,3 +24,16 @@ jQuery(document).on('submit','#zureo-importer-period', function(e){
         alert( "Data Saved: " + msg );
     });
 });
+
+
+jQuery(document).on('click','zureo-importer-sync-past', function(e){
+
+    jQuery.ajax({
+        type: "get",
+        url: zureo_ajax.ajaxurl,
+        data: { action: 'get_period_sync', start_date: jQuery("#start_date").val(), end_date: jQuery("#end_date").val()  },
+        dataType: 'json'
+    }).done(function( msg ) {
+        alert( "Data Saved: " + msg );
+    });
+});
