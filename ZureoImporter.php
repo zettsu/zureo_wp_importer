@@ -170,14 +170,11 @@ class ZureoImporter {
                     }
                 }
 
-                $image_id = self::save_image($image,"{$art_id}" );
+                $image_id = self::save_image($image,"{$art_id}_" );
 
                 $woo_obj->set_gallery_image_ids([$image_id]);
                 $woo_obj->save();
             }
-
-
-
 
         }
 
@@ -204,7 +201,7 @@ class ZureoImporter {
 
 	$attachment = array(
 		'post_mime_type' => $file_type,
-		'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $filename ) ),
+		'post_title'     => $filename,
 		'post_content'   => '',
 		'post_status'    => 'inherit',
 		'guid'           => $upload_dir['url'] . '/' . basename( $filename )
