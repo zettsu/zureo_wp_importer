@@ -1,4 +1,4 @@
-# # Zureo importer Plugin
+# Zureo importer Plugin
 
 # This version is not longer supported
 
